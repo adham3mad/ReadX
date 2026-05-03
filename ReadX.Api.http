@@ -1,0 +1,6 @@
+@ReadX.Api_HostAddress = http://localhost:5128
+
+GET {{ReadX.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
