@@ -4,6 +4,7 @@ using ReadX.Api.DTOs;
 using ReadX.Api.Services.Interfaces;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using ReadX.Api.Extensions;
 
 namespace ReadX.Api.Controllers;
 
@@ -22,7 +23,7 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.GetUserId();
         var response = await _userService.GetMyProfileAsync(userId!);
         return Ok(response);
     }
@@ -30,7 +31,7 @@ public class UsersController : ControllerBase
     [HttpPut("me")]
     public async Task<IActionResult> UpdateMyProfile(UpdateProfileRequest request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.GetUserId();
         var response = await _userService.UpdateMyProfileAsync(userId!, request);
         return Ok(response);
     }

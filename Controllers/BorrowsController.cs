@@ -4,6 +4,7 @@ using ReadX.Api.DTOs;
 using ReadX.Api.Services.Interfaces;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using ReadX.Api.Extensions;
 
 namespace ReadX.Api.Controllers;
 
@@ -23,7 +24,7 @@ public class BorrowsController : ControllerBase
     [Authorize(Policy = "MemberOnly")]
     public async Task<IActionResult> RequestBorrow(BorrowRequestDto request)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.GetUserId();
         var response = await _borrowService.RequestBorrowAsync(userId!, request);
         return Created($"/borrows/{response.Id}", response);
     }
@@ -64,7 +65,7 @@ public class BorrowsController : ControllerBase
     [Authorize(Policy = "MemberOnly")]
     public async Task<IActionResult> GetMyBorrows([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.GetUserId();
         var response = await _borrowService.GetMyBorrowsAsync(userId!, status, page, limit);
         return Ok(response);
     }

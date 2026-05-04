@@ -28,7 +28,8 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
-        var existingUser = await _userRepository.GetOneAsync(u => u.Email == request.Email);
+        request.Email = request.Email.Trim().ToLower();
+        var existingUser = await _userRepository.GetOneAsync(u => u.Email.ToLower() == request.Email);
         if (existingUser != null)
         {
             throw new BusinessException("EmailAlreadyRegistered", 409);
@@ -54,7 +55,8 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.GetOneAsync(u => u.Email == request.Email);
+        request.Email = request.Email.Trim().ToLower();
+        var user = await _userRepository.GetOneAsync(u => u.Email.ToLower() == request.Email);
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             throw new BusinessException("InvalidCredentials", 401);
