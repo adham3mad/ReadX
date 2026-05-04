@@ -5,6 +5,7 @@ namespace ReadX.Api.DTOs;
 public class BorrowRequestDto
 {
     public string BookId { get; set; } = string.Empty;
+    public int RequestedDurationDays { get; set; }
 }
 
 public class BorrowResponse
@@ -17,6 +18,7 @@ public class BorrowResponse
     public string BookCategory { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime RequestedAt { get; set; }
+    public int RequestedDurationDays { get; set; }
     public DateTime? BorrowedAt { get; set; }
     public DateTime? DueAt { get; set; }
     public DateTime? ReturnedAt { get; set; }

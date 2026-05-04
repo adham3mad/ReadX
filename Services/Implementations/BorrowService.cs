@@ -42,7 +42,8 @@ public class BorrowService : IBorrowService
             BookTitle = book.Title,
             BookCategory = book.Category,
             Status = BorrowStatus.Pending,
-            RequestedAt = DateTime.UtcNow
+            RequestedAt = DateTime.UtcNow,
+            RequestedDurationDays = request.RequestedDurationDays
         };
 
         await _borrowRepository.CreateAsync(borrow);
@@ -87,7 +88,9 @@ public class BorrowService : IBorrowService
 
         borrow.Status = BorrowStatus.Active;
         borrow.BorrowedAt = DateTime.UtcNow;
-        borrow.DueAt = DateTime.UtcNow.AddDays(14);
+        
+        var duration = borrow.RequestedDurationDays > 0 ? borrow.RequestedDurationDays : 14;
+        borrow.DueAt = DateTime.UtcNow.AddDays(duration);
 
         book.AvailableCopies -= 1;
         
@@ -164,14 +167,17 @@ public class BorrowService : IBorrowService
             BookCategory = b.BookCategory,
             Status = b.Status.ToString().ToLower(),
             RequestedAt = b.RequestedAt,
+            RequestedDurationDays = b.RequestedDurationDays,
             BorrowedAt = b.BorrowedAt,
             DueAt = b.DueAt,
             ReturnedAt = b.ReturnedAt
         };
 
-        if (b.Status == BorrowStatus.Active && b.DueAt.HasValue)
+        if (b.DueAt.HasValue)
         {
-            var remaining = (b.DueAt.Value - DateTime.UtcNow).Days;
+            var referenceDate = b.ReturnedAt ?? DateTime.UtcNow;
+            var remaining = (b.DueAt.Value - referenceDate).Days;
+            
             if (remaining < 0)
             {
                 response.DaysOverdue = Math.Abs(remaining);
@@ -183,9 +189,10 @@ public class BorrowService : IBorrowService
                 response.DaysOverdue = 0;
             }
         }
-        else if (b.Status == BorrowStatus.Overdue && b.DueAt.HasValue)
+        else
         {
-            response.DaysOverdue = (DateTime.UtcNow - b.DueAt.Value).Days;
+            response.DaysOverdue = 0;
+            response.DaysRemaining = 0;
         }
 
         return response;
