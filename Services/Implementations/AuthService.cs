@@ -28,20 +28,24 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
+        // Normalize email to prevent duplicates with different casing or extra spaces
         request.Email = request.Email.Trim().ToLower();
+
+        // Check if user already exists in the database
         var existingUser = await _userRepository.GetOneAsync(u => u.Email.ToLower() == request.Email);
         if (existingUser != null)
         {
             throw new BusinessException("EmailAlreadyRegistered", 409);
         }
 
+        // Create new user entity with hashed password
         var user = new User
         {
             FullName = request.FullName,
             Email = request.Email,
             Phone = request.Phone,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            Role = Models.Enums.UserRole.Member
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), // Securely hash password
+            Role = Models.Enums.UserRole.Member // Default role for new registrations
         };
 
         await _userRepository.CreateAsync(user);
@@ -55,8 +59,13 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
+        // Normalize email for lookup
         request.Email = request.Email.Trim().ToLower();
+
+        // Find user by email
         var user = await _userRepository.GetOneAsync(u => u.Email.ToLower() == request.Email);
+        
+        // Verify user exists and password matches the stored hash
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             throw new BusinessException("InvalidCredentials", 401);
@@ -69,17 +78,19 @@ public class AuthService : IAuthService
         };
     }
 
+    /// Generates a secure JWT token for the authenticated user
     private string GenerateJwtToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Define user information (claims) to be embedded in the token
         var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id), // Unique User ID
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim("role", user.Role.ToString().ToLower()),
-            new Claim(ClaimTypes.Role, user.Role.ToString().ToLower()) // standard .NET role claim
+            new Claim("role", user.Role.ToString().ToLower()), // Custom role claim for easy access
+            new Claim(ClaimTypes.Role, user.Role.ToString().ToLower()) // Standard .NET role claim
         };
 
         var token = new JwtSecurityToken(
@@ -93,6 +104,7 @@ public class AuthService : IAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// Maps User model to UserResponse DTO
     private static UserResponse MapToUserResponse(User user)
     {
         return new UserResponse

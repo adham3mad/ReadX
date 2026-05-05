@@ -22,7 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Load .env file
 DotNetEnv.Env.Load();
 
-// Configure Environment Variables mapping to handle cleaner names in .env
+// Map environment variables to strongly-typed configuration sections
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
     { "MongoDbSettings:ConnectionString", Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING") },
@@ -33,12 +33,14 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     { "JwtSettings:ExpiryMinutes", Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") }
 }.Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value));
 
-// Prevent mapping "role" claim to a Microsoft namespace URL
+// Prevent standard JWT claim mapping to long XML namespaces (keep them clean as "sub", "role", etc.)
 System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Swagger Documentation setup with JWT Bearer support
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ReadX API", Version = "v1" });
@@ -67,7 +69,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Settings
+// Configure Settings Classes
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
@@ -98,7 +100,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.MapInboundClaims = false;
+    options.MapInboundClaims = false; // Disable automatic claim mapping
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -108,11 +110,11 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings!.Issuer,
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
-        RoleClaimType = "role"
+        RoleClaimType = "role" // Identify the claim name for roles
     };
 });
 
-// Authorization Policies
+// Define Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireClaim("role", "admin"));
@@ -121,22 +123,28 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// --- Database Seeding ---
+
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
 
+// --- Middlewares Pipeline ---
+
+// 1. Handle errors globally
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
-// Configure the HTTP request pipeline.
+// 2. Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI();
-// app.UseHttpsRedirection();
 
+// 3. Security Middlewares
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 4. Map API Routes
 app.MapControllers();
 
 app.Run();

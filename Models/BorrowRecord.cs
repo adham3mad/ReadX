@@ -27,7 +27,7 @@ public class BorrowRecord
     public BorrowStatus Status { get; set; } = BorrowStatus.Pending;
 
     public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
-    
+
     public int RequestedDurationDays { get; set; }
 
     public DateTime? BorrowedAt { get; set; }

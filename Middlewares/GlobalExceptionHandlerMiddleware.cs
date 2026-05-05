@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace ReadX.Api.Middlewares;
 
+/// Global middleware to catch all exceptions and return a consistent JSON response
 public class GlobalExceptionHandlerMiddleware
 {
     private readonly RequestDelegate _next;
@@ -26,14 +27,18 @@ public class GlobalExceptionHandlerMiddleware
     {
         try
         {
+            // Proceed to the next middleware/controller
             await _next(context);
         }
         catch (BusinessException ex)
         {
+            // Handle known business logic errors (e.g., UserNotFound)
+            // Use LocalizationService to translate the error code
             await HandleExceptionAsync(context, ex.StatusCode, ex.ErrorCode, _localizationService.GetMessage(ex.ErrorCode));
         }
         catch (FluentValidation.ValidationException ex)
         {
+            // Handle FluentValidation errors automatically
             var firstError = ex.Errors.FirstOrDefault();
             var errorCode = firstError?.ErrorCode ?? "ValidationFailed";
             var message = firstError?.ErrorMessage ?? _localizationService.GetMessage(errorCode);
@@ -42,11 +47,13 @@ public class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex)
         {
+            // Handle unexpected system errors (Crashes)
             _logger.LogError(ex, "An unhandled exception has occurred.");
             await HandleExceptionAsync(context, StatusCodes.Status500InternalServerError, "InternalServerError", "An unexpected error occurred.");
         }
     }
 
+    /// Writes a standardized JSON error response to the HTTP output
     private static Task HandleExceptionAsync(HttpContext context, int statusCode, string errorCode, string message)
     {
         context.Response.ContentType = "application/json";
